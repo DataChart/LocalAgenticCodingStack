@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang xml:lang>
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Fully Local Self-Hosted Claude Code Equivalent</title>
+  <style>
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">:root{--navy:#17365d;--blue:#2f5597;--ink:#1e293b;--muted:#4f6478;--line:#cbd5e1;--soft:#f3f5f7;--alt:#eef3f8;--green:#e2f0d9}*{box-sizing:border-box}html{scroll-behavior:smooth}body{max-width:1100px;margin:0 auto;padding:48px 64px 96px;color:var(--ink);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Arial,sans-serif;background:#fff}h1,h2,h3{font-family:"Segoe UI",Arial,sans-serif;line-height:1.2;color:var(--navy);margin-top:1.8em}h1{font-size:2rem;border-bottom:3px solid var(--navy);padding-bottom:.35rem}h2{font-size:1.45rem;color:var(--blue)}h3{font-size:1.1rem;color:#385723}p{margin:.5rem 0 .85rem}a{color:var(--blue)}table{border-collapse:collapse;width:100%;margin:1rem 0 1.5rem;font-size:.92rem;display:block;overflow-x:auto}thead{background:var(--navy);color:#fff}th,td{border:1px solid var(--line);padding:.65rem .75rem;text-align:left;vertical-align:middle}tbody tr:nth-child(even){background:var(--alt)}pre{background:var(--soft);border-left:4px solid var(--blue);padding:1rem 1.1rem;overflow:auto;border-radius:6px;margin:1rem 0 1.3rem}code{font:0.88em/1.45 Consolas,"Cascadia Code",monospace}p code,li code{background:var(--soft);padding:.1em .35em;border-radius:4px}blockquote{margin:1rem 0;padding:.75rem 1rem;background:var(--green);border-left:5px solid #70ad47}ul,ol{padding-left:1.5rem}li{margin:.25rem 0}.title{font-size:2.5rem;text-align:center;border:0;margin-top:1.8rem}.subtitle{text-align:center;color:var(--muted);font-size:1.2rem}.author,.date{text-align:center;color:var(--muted)}@media(max-width:760px){body{padding:24px 18px 64px}h1{font-size:1.65rem}.title{font-size:2rem}th,td{min-width:130px}}@media print{body{max-width:none;padding:.5in;font-size:10pt}pre{white-space:pre-wrap;word-break:break-word}h1,h2,h3{break-after:avoid}table,pre{break-inside:avoid}a{text-decoration:none;color:inherit}}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Fully Local Self-Hosted Claude Code Equivalent</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#executive-decision" id="toc-executive-decision">Executive
+Decision</a></li>
+<li><a href="#architecture-decision" id="toc-architecture-decision">1.
+Architecture Decision</a>
+<ul>
+<li><a href="#recommendation-wsl2-not-windows-native-or-dual-boot" id="toc-recommendation-wsl2-not-windows-native-or-dual-boot">Recommendation:
+WSL2, not Windows-native or dual boot</a></li>
+<li><a href="#filesystem-rule" id="toc-filesystem-rule">Filesystem
+rule</a></li>
+<li><a href="#primary-deployment-topology" id="toc-primary-deployment-topology">Primary deployment
+topology</a></li>
+<li><a href="#layered-architecture" id="toc-layered-architecture">Layered architecture</a></li>
+</ul></li>
+<li><a href="#inference-layer" id="toc-inference-layer">2. Inference
+Layer</a>
+<ul>
+<li><a href="#engine-comparison-for-four-12-gb-rtx-4070s" id="toc-engine-comparison-for-four-12-gb-rtx-4070s">Engine comparison
+for four 12 GB RTX 4070s</a></li>
+<li><a href="#gpu-allocation-strategies" id="toc-gpu-allocation-strategies">GPU allocation strategies</a></li>
+<li><a href="#recommended-models" id="toc-recommended-models">Recommended models</a></li>
+<li><a href="#install-wsl2-and-gpu-support" id="toc-install-wsl2-and-gpu-support">Install WSL2 and GPU
+support</a></li>
+<li><a href="#inspect-pcie-topology" id="toc-inspect-pcie-topology">Inspect PCIe topology</a></li>
+<li><a href="#build-llama.cpp" id="toc-build-llama.cpp">Build
+llama.cpp</a></li>
+<li><a href="#download-models" id="toc-download-models">Download
+models</a></li>
+<li><a href="#launch-the-main-qwen-server" id="toc-launch-the-main-qwen-server">Launch the main Qwen
+server</a></li>
+<li><a href="#launch-the-fast-model" id="toc-launch-the-fast-model">Launch the fast model</a></li>
+<li><a href="#api-verification" id="toc-api-verification">API
+verification</a></li>
+<li><a href="#speculative-decoding" id="toc-speculative-decoding">Speculative decoding</a></li>
+</ul></li>
+<li><a href="#api-gateway-layer" id="toc-api-gateway-layer">3. API
+Gateway Layer</a>
+<ul>
+<li><a href="#install-and-configure-litellm" id="toc-install-and-configure-litellm">Install and configure
+LiteLLM</a></li>
+<li><a href="#anthropic-messages-compatibility" id="toc-anthropic-messages-compatibility">Anthropic Messages
+compatibility</a></li>
+<li><a href="#pointing-clis-at-the-gateway" id="toc-pointing-clis-at-the-gateway">Pointing CLIs at the
+gateway</a></li>
+</ul></li>
+<li><a href="#agent-harness" id="toc-agent-harness">4. Agent Harness</a>
+<ul>
+<li><a href="#primary-recommendation-opencode" id="toc-primary-recommendation-opencode">Primary recommendation:
+OpenCode</a></li>
+<li><a href="#project-memory" id="toc-project-memory">Project
+memory</a></li>
+<li><a href="#minimal-owned-python-harness" id="toc-minimal-owned-python-harness">Minimal owned Python
+harness</a></li>
+</ul></li>
+<li><a href="#orchestration-and-multi-agent-layer" id="toc-orchestration-and-multi-agent-layer">5. Orchestration and
+Multi-Agent Layer</a>
+<ul>
+<li><a href="#recommended-combination" id="toc-recommended-combination">Recommended combination</a></li>
+<li><a href="#initial-concurrency-limits" id="toc-initial-concurrency-limits">Initial concurrency limits</a></li>
+<li><a href="#plannerexecutorreviewer-pattern" id="toc-plannerexecutorreviewer-pattern">Planner/executor/reviewer
+pattern</a></li>
+<li><a href="#git-worktree-isolation" id="toc-git-worktree-isolation">Git worktree isolation</a></li>
+<li><a href="#mcp-design" id="toc-mcp-design">MCP design</a></li>
+</ul></li>
+<li><a href="#security-and-sandboxing" id="toc-security-and-sandboxing">6. Security and Sandboxing</a>
+<ul>
+<li><a href="#docker-execution-sandbox" id="toc-docker-execution-sandbox">Docker execution sandbox</a></li>
+<li><a href="#permission-policy" id="toc-permission-policy">Permission
+policy</a></li>
+<li><a href="#secret-handling-and-prompt-injection" id="toc-secret-handling-and-prompt-injection">Secret handling and prompt
+injection</a></li>
+</ul></li>
+<li><a href="#observability-and-evaluation" id="toc-observability-and-evaluation">7. Observability and
+Evaluation</a>
+<ul>
+<li><a href="#minimum-stack" id="toc-minimum-stack">Minimum
+stack</a></li>
+<li><a href="#evaluation-suite" id="toc-evaluation-suite">Evaluation
+suite</a></li>
+</ul></li>
+<li><a href="#phased-build-plan" id="toc-phased-build-plan">8. Phased
+Build Plan</a>
+<ul>
+<li><a href="#verification-command-set" id="toc-verification-command-set">Verification command set</a></li>
+</ul></li>
+<li><a href="#limitations-and-honest-gaps" id="toc-limitations-and-honest-gaps">9. Limitations and Honest Gaps</a>
+<ul>
+<li><a href="#capability-parity" id="toc-capability-parity">Capability
+parity</a></li>
+<li><a href="#model-gaps-and-mitigations" id="toc-model-gaps-and-mitigations">Model gaps and mitigations</a></li>
+<li><a href="#hardware-bottlenecks-and-upgrades" id="toc-hardware-bottlenecks-and-upgrades">Hardware bottlenecks and
+upgrades</a></li>
+<li><a href="#power-heat-and-noise" id="toc-power-heat-and-noise">Power,
+heat and noise</a></li>
+</ul></li>
+<li><a href="#start-here-first-10-actions" id="toc-start-here-first-10-actions">Start Here: First 10
+Actions</a></li>
+<li><a href="#references-checked" id="toc-references-checked">References
+Checked</a></li>
+</ul>
+</nav>
+<p><strong>FULLY LOCAL, SELF-HOSTED<br />
+CLAUDE CODE EQUIVALENT</strong></p>
+<p>Implementation Guide for a Four-GPU Windows 11 Workstation</p>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>Component</strong></th>
+<th><strong>Target</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Host</td>
+<td>Windows 11 with WSL2 / Ubuntu 24.04</td>
+</tr>
+<tr>
+<td>Compute</td>
+<td>4 x NVIDIA RTX 4070, 12 GB each; no NVLink</td>
+</tr>
+<tr>
+<td>CPU / RAM</td>
+<td>Intel i5-14400F / 32 GB RAM</td>
+</tr>
+<tr>
+<td>Storage</td>
+<td>2 TB SSD</td>
+</tr>
+<tr>
+<td>Primary result</td>
+<td>Local coding agent, multi-agent orchestration, scheduling, MCP,
+sandboxing and observability</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Prepared October 20, 2026</strong></p>
+<p><em>Version-sensitive technical claims were checked against
+documentation available on this date. Performance figures remain
+estimates until measured on the actual motherboard topology.</em></p>
+<h1 id="executive-decision">Executive Decision</h1>
+<p>Implement the workstation with WSL2 and Ubuntu 24.04. Run two
+independent local inference services: Qwen3-Coder-30B-A3B-Instruct on
+GPUs 0-1 as the primary coding model, and gpt-oss-20b on GPUs 2-3 for
+planning, review, summaries and subagents. Put LiteLLM in front of both
+services, use OpenCode as the daily terminal harness, and use LangGraph
+plus Prefect for owned orchestration and scheduled work.</p>
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr>
+<th>Critical assumption: all four RTX 4070s are visible to CUDA and each
+slot negotiates at least PCIe 4.0 x4. If any slot runs at x1, avoid
+splitting a single model across that GPU.</th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+<h1 id="architecture-decision">1. Architecture Decision</h1>
+<h2 id="recommendation-wsl2-not-windows-native-or-dual-boot">Recommendation:
+WSL2, not Windows-native or dual boot</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>Option</strong></th>
+<th><strong>Decision</strong></th>
+<th><strong>Reason</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Windows-native</td>
+<td>No</td>
+<td>Good desktop integration, but weaker compatibility with Linux-first
+inference servers, container sandboxes, NVIDIA exporters, MCP servers
+and orchestration tools.</td>
+</tr>
+<tr>
+<td>WSL2 Ubuntu 24.04</td>
+<td>Recommended</td>
+<td>Best compromise: Linux CUDA applications, Docker, namespaces, shell
+tools and Windows/VS Code integration without rebooting.</td>
+</tr>
+<tr>
+<td>Dual-boot Ubuntu</td>
+<td>Only if WSL benchmarks fail</td>
+<td>Lowest virtualization and filesystem friction, but poor daily-driver
+ergonomics because Windows and Linux cannot be used simultaneously.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="filesystem-rule">Filesystem rule</h2>
+<p>Keep active repositories inside the WSL virtual disk:</p>
+<p>/home/caleb/src/project</p>
+<p>Do not run agent-heavy repositories from:</p>
+<p>/mnt/c/Users/Caleb/source/project</p>
+<p>wsl -d Ubuntu-24.04 --cd /home/caleb/src/project code .</p>
+<h2 id="primary-deployment-topology">Primary deployment topology</h2>
+<ul>
+<li><p>GPU 0 + GPU 1: Qwen3-Coder-30B-A3B-Instruct, primary coding
+model.</p></li>
+<li><p>GPU 2 + GPU 3: gpt-oss-20b, planner, reviewer, summarizer and
+subagent model.</p></li>
+<li><p>CPU: gateway, orchestration, Git, MCP and test
+coordination.</p></li>
+<li><p>Docker containers: command sandbox, observability, Prefect and
+optional Langfuse.</p></li>
+<li><p>Windows: VS Code frontend only.</p></li>
+<li><p>WSL: repositories, models, agents, inference servers and
+containers.</p></li>
+</ul>
+<h2 id="layered-architecture">Layered architecture</h2>
+<p>flowchart TB<br />
+Hardware: RTX 4070 GPU 0-1 -&gt; llama-server :8001 (Qwen3-Coder)<br />
+Hardware: RTX 4070 GPU 2-3 -&gt; llama-server :8002 (gpt-oss)<br />
+Both inference servers -&gt; LiteLLM Proxy :4000<br />
+LiteLLM -&gt; OpenCode daily driver / custom Python harness<br />
+Harness -&gt; local MCP servers and Docker execution sandbox<br />
+LangGraph + Prefect -&gt; harness<br />
+Gateway, harness and model servers -&gt; OpenTelemetry / Langfuse /
+Prometheus / Grafana</p>
+<h1 id="inference-layer">2. Inference Layer</h1>
+<h2 id="engine-comparison-for-four-12-gb-rtx-4070s">Engine comparison
+for four 12 GB RTX 4070s</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>Engine</strong></th>
+<th><strong>Multi-GPU / quantization</strong></th>
+<th><strong>Tooling and WSL2 fit</strong></th>
+<th><strong>Verdict</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>llama.cpp</td>
+<td>Layer splitting; broad GGUF Q2-Q8 support</td>
+<td>Template-dependent tool calls; excellent WSL2 fit</td>
+<td>Primary choice</td>
+</tr>
+<tr>
+<td>vLLM</td>
+<td>Tensor/pipeline parallelism; AWQ, GPTQ, FP8 and FP8 KV</td>
+<td>Strong parser framework and continuous batching; good WSL2 fit</td>
+<td>Second-stage benchmark</td>
+</tr>
+<tr>
+<td>SGLang</td>
+<td>TP, PP, expert/data parallelism; AWQ, GPTQ, INT4 and FP8</td>
+<td>Strong qwen3_coder and gpt-oss parsers; more operational
+complexity</td>
+<td>Benchmark after v1</td>
+</tr>
+<tr>
+<td>Ollama</td>
+<td>Automatic placement; GGUF ecosystem</td>
+<td>Simple but limited topology control</td>
+<td>Proof of concept only</td>
+</tr>
+<tr>
+<td>ExLlamaV2 / TabbyAPI</td>
+<td>EXL2/GPTQ weight splitting</td>
+<td>Good low-user latency; template-sensitive</td>
+<td>Useful alternative for dense EXL2 models</td>
+</tr>
+</tbody>
+</table>
+<p>Do not default to tensor parallel size 4. With no NVLink,
+synchronization traverses PCIe. On unknown motherboard lanes, layer
+splitting or two independent two-GPU servers is safer and often more
+predictable.</p>
+<h2 id="gpu-allocation-strategies">GPU allocation strategies</h2>
+<table>
+<colgroup>
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+<col style="width: 25%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>Strategy</strong></th>
+<th><strong>Use</strong></th>
+<th><strong>Advantages</strong></th>
+<th><strong>Problems</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>One model across four GPUs</td>
+<td>Largest model</td>
+<td>Maximum pooled VRAM</td>
+<td>Highest PCIe traffic; no independent subagent capacity</td>
+</tr>
+<tr>
+<td>Main on GPUs 0-1; fast on 2-3</td>
+<td>Recommended</td>
+<td>Real concurrency, predictable routing and failure isolation</td>
+<td>Each model limited to roughly 24 GB</td>
+</tr>
+<tr>
+<td>One model per GPU</td>
+<td>7B-12B agents</td>
+<td>Four independent services</td>
+<td>Lower coding quality; duplicated weights and KV</td>
+</tr>
+<tr>
+<td>Main on three GPUs; fast on fourth</td>
+<td>30-34 GB main model</td>
+<td>More main-model headroom</td>
+<td>Fast model must be small; asymmetric topology</td>
+</tr>
+</tbody>
+</table>
+<h2 id="recommended-models">Recommended models</h2>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>Role</strong></th>
+<th><strong>Model</strong></th>
+<th><strong>Parameters</strong></th>
+<th><strong>Quantization</strong></th>
+<th><strong>Context</strong></th>
+<th><strong>Estimated VRAM</strong></th>
+<th><strong>Estimated decode</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Main coder</td>
+<td>Qwen3-Coder-30B-A3B-Instruct</td>
+<td>30.5B total / 3.3B active</td>
+<td>GGUF Q4_K_M</td>
+<td>64K</td>
+<td>20-23 GB</td>
+<td>25-60 tok/s</td>
+</tr>
+<tr>
+<td>Fast/reviewer</td>
+<td>gpt-oss-20b</td>
+<td>21B total / 3.6B active</td>
+<td>Native MXFP4 or GGUF Q4</td>
+<td>64K</td>
+<td>17-22 GB</td>
+<td>35-80 tok/s</td>
+</tr>
+<tr>
+<td>Dense alternative</td>
+<td>Devstral-Small-2-24B-Instruct-2512</td>
+<td>24B dense</td>
+<td>GGUF Q4_K_M</td>
+<td>64K</td>
+<td>18-23 GB</td>
+<td>15-30 tok/s</td>
+</tr>
+<tr>
+<td>Per-GPU fallback</td>
+<td>Qwen 8B-class coder/instruct</td>
+<td>About 8B</td>
+<td>Q4/Q5</td>
+<td>32K-64K</td>
+<td>7-11 GB</td>
+<td>35-70 tok/s</td>
+</tr>
+</tbody>
+</table>
+<p>The VRAM and decode figures are engineering estimates. Start at 32K
+context, validate 64K, and increase only after OOM and concurrency
+testing.</p>
+<h2 id="install-wsl2-and-gpu-support">Install WSL2 and GPU support</h2>
+<p># Elevated PowerShell<br />
+wsl --install -d Ubuntu-24.04<br />
+wsl --update<br />
+wsl --set-default-version 2<br />
+wsl --shutdown<br />
+<br />
+nvidia-smi<br />
+wsl -d Ubuntu-24.04 -- nvidia-smi</p>
+<p>Do not install a Linux NVIDIA kernel driver inside WSL. WSL exposes
+the Windows driver interface.</p>
+<p># %UserProfile%\.wslconfig<br />
+[wsl2]<br />
+memory=28GB<br />
+processors=10<br />
+swap=32GB<br />
+localhostForwarding=true<br />
+kernelCommandLine=cgroup_no_v1=all</p>
+<p>The present 32 GB of system RAM is marginal. Upgrade to at least 64
+GB before running two model servers, Docker, observability and active
+builds together.</p>
+<h2 id="inspect-pcie-topology">Inspect PCIe topology</h2>
+<p>nvidia-smi -L<br />
+nvidia-smi topo -m<br />
+nvidia-smi --query-gpu=index,name,pci.bus_id,memory.total,power.limit
+--format=csv<br />
+lspci -vv | grep -A 20 -E &quot;VGA|3D controller&quot; | grep -E
+&quot;LnkCap|LnkSta&quot;</p>
+<ul>
+<li><p>PCIe 4.0 x8/x16: good.</p></li>
+<li><p>PCIe 4.0 x4: acceptable for layer split.</p></li>
+<li><p>PCIe 3.0 x4: usable, but prefill may suffer.</p></li>
+<li><p>x1: avoid placing adjacent model layers across that
+card.</p></li>
+<li><p>Chipset-connected cards may contend with NVMe and
+networking.</p></li>
+</ul>
+<h2 id="build-llama.cpp">Build llama.cpp</h2>
+<p>sudo apt update<br />
+sudo apt install -y build-essential cmake ninja-build git git-lfs curl
+jq python3 python3-venv python3-pip libcurl4-openssl-dev
+pkg-config<br />
+<br />
+mkdir -p ~/src ~/models ~/services<br />
+cd ~/src<br />
+git clone https://github.com/ggml-org/llama.cpp.git<br />
+cd llama.cpp<br />
+git checkout master<br />
+git rev-parse HEAD | tee ~/services/llama-cpp.commit<br />
+<br />
+cmake -B build -G Ninja -DGGML_CUDA=ON -DLLAMA_CURL=ON
+-DCMAKE_BUILD_TYPE=Release<br />
+cmake --build build --config Release -j 10<br />
+./build/bin/llama-server --version</p>
+<h2 id="download-models">Download models</h2>
+<p>python3 -m venv ~/.venvs/hf<br />
+source ~/.venvs/hf/bin/activate<br />
+pip install --upgrade huggingface_hub<br />
+hf auth login<br />
+<br />
+mkdir -p ~/models/qwen3-coder-30b<br />
+hf download unsloth/Qwen3-Coder-30B-A3B-Instruct-GGUF --include
+&quot;*Q4_K_M*.gguf&quot; --local-dir ~/models/qwen3-coder-30b<br />
+<br />
+mkdir -p ~/models/gpt-oss-20b<br />
+hf download openai/gpt-oss-20b --local-dir ~/models/gpt-oss-20b-hf</p>
+<h2 id="launch-the-main-qwen-server">Launch the main Qwen server</h2>
+<p>#!/usr/bin/env bash<br />
+set -euo pipefail<br />
+export CUDA_VISIBLE_DEVICES=0,1<br />
+MODEL=&quot;$HOME/models/qwen3-coder-30b/Qwen3-Coder-30B-A3B-Instruct-Q4_K_M.gguf&quot;<br />
+<br />
+exec &quot;$HOME/src/llama.cpp/build/bin/llama-server&quot; --model &quot;$MODEL&quot;
+--host 127.0.0.1 --port 8001 --alias qwen3-coder-main --ctx-size 65536
+--n-gpu-layers 999 --split-mode layer --tensor-split 1,1 --parallel 2
+--batch-size 1024 --ubatch-size 256 --flash-attn on --cache-type-k q8_0
+--cache-type-v q8_0 --metrics --jinja</p>
+<p>~/src/llama.cpp/build/bin/llama-server --help | grep -E
+&quot;alias|ctx-size|split-mode|tensor-split|parallel|flash-attn|cache-type|jinja|metrics&quot;</p>
+<h2 id="launch-the-fast-model">Launch the fast model</h2>
+<p>#!/usr/bin/env bash<br />
+set -euo pipefail<br />
+export CUDA_VISIBLE_DEVICES=2,3<br />
+MODEL=&quot;$HOME/models/gpt-oss-20b/gpt-oss-20b-MXFP4.gguf&quot;<br />
+<br />
+exec &quot;$HOME/src/llama.cpp/build/bin/llama-server&quot; --model &quot;$MODEL&quot;
+--host 127.0.0.1 --port 8002 --alias gpt-oss-fast --ctx-size 65536
+--n-gpu-layers 999 --split-mode layer --tensor-split 1,1 --parallel 3
+--batch-size 1024 --ubatch-size 256 --flash-attn on --cache-type-k q8_0
+--cache-type-v q8_0 --metrics --jinja</p>
+<p>If the gpt-oss GGUF conversion or Harmony template fails, use SGLang
+instead:</p>
+<p>python3 -m venv ~/.venvs/sglang<br />
+source ~/.venvs/sglang/bin/activate<br />
+pip install --upgrade pip<br />
+pip install &quot;sglang[all]&quot;<br />
+<br />
+CUDA_VISIBLE_DEVICES=2,3 python3 -m sglang.launch_server --model-path
+openai/gpt-oss-20b --host 127.0.0.1 --port 8002 --tp-size 2
+--context-length 65536 --tool-call-parser gpt-oss</p>
+<h2 id="api-verification">API verification</h2>
+<p>curl -s http://127.0.0.1:8001/v1/models | jq<br />
+curl -s http://127.0.0.1:8002/v1/models | jq<br />
+<br />
+curl -s http://127.0.0.1:8001/v1/chat/completions -H &#39;Content-Type:
+application/json&#39; -d &#39;{<br />
+&quot;model&quot;: &quot;qwen3-coder-main&quot;,<br />
+&quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;Return only a Python function
+that adds two integers.&quot;}],<br />
+&quot;temperature&quot;: 0.2,<br />
+&quot;max_tokens&quot;: 256<br />
+}&#39; | jq</p>
+<h2 id="speculative-decoding">Speculative decoding</h2>
+<p>Do not make speculative decoding part of version 1. Benchmark it
+later with a tokenizer-compatible small Qwen draft model. It is most
+useful when the target model is expensive per decoded token, tokenizer
+compatibility is exact, draft acceptance is high, and PCIe traffic does
+not erase the gain.</p>
+<h1 id="api-gateway-layer">3. API Gateway Layer</h1>
+<h2 id="install-and-configure-litellm">Install and configure
+LiteLLM</h2>
+<p>python3 -m venv ~/.venvs/litellm<br />
+source ~/.venvs/litellm/bin/activate<br />
+pip install --upgrade pip<br />
+pip install &quot;litellm[proxy]&quot;</p>
+<p>model_list:<br />
+- model_name: local-coder<br />
+litellm_params:<br />
+model: openai/qwen3-coder-main<br />
+api_base: http://127.0.0.1:8001/v1<br />
+api_key: local-only<br />
+rpm: 30<br />
+tpm: 500000<br />
+<br />
+- model_name: local-fast<br />
+litellm_params:<br />
+model: openai/gpt-oss-fast<br />
+api_base: http://127.0.0.1:8002/v1<br />
+api_key: local-only<br />
+rpm: 60<br />
+tpm: 500000<br />
+<br />
+- model_name: local-reviewer<br />
+litellm_params:<br />
+model: openai/gpt-oss-fast<br />
+api_base: http://127.0.0.1:8002/v1<br />
+api_key: local-only<br />
+rpm: 30<br />
+tpm: 300000<br />
+<br />
+router_settings:<br />
+routing_strategy: least-busy<br />
+num_retries: 1<br />
+retry_after: 2<br />
+allowed_fails: 2<br />
+cooldown_time: 30<br />
+<br />
+litellm_settings:<br />
+drop_params: true<br />
+set_verbose: false<br />
+request_timeout: 600<br />
+success_callback: [prometheus]<br />
+failure_callback: [prometheus]<br />
+<br />
+general_settings:<br />
+master_key: os.environ/LITELLM_MASTER_KEY<br />
+disable_spend_logs: false</p>
+<p>export LITELLM_MASTER_KEY=&#39;sk-local-change-this&#39;<br />
+source ~/.venvs/litellm/bin/activate<br />
+litellm --config ~/services/litellm-config.yaml --host 127.0.0.1 --port
+4000<br />
+<br />
+curl -s http://127.0.0.1:4000/v1/models -H &quot;Authorization: Bearer
+$LITELLM_MASTER_KEY&quot; | jq</p>
+<h2 id="anthropic-messages-compatibility">Anthropic Messages
+compatibility</h2>
+<ul>
+<li><p>Treat OpenAI-compatible /v1/chat/completions as
+authoritative.</p></li>
+<li><p>Use Anthropic-format translation only after tool-call regression
+tests pass.</p></li>
+<li><p>Do not assume Claude prompt caching, extended-thinking fields,
+computer-use blocks or exact streaming events exist locally.</p></li>
+<li><p>Expect brittleness from clients that hard-code Anthropic-specific
+content block types.</p></li>
+</ul>
+<h2 id="pointing-clis-at-the-gateway">Pointing CLIs at the gateway</h2>
+<p>export OPENAI_API_KEY=&quot;$LITELLM_MASTER_KEY&quot;<br />
+export OPENAI_BASE_URL=&quot;http://127.0.0.1:4000/v1&quot;</p>
+<ul>
+<li><p>Tool-call delimiters may not match a model template.</p></li>
+<li><p>Clients may send unsupported prompt-caching parameters.</p></li>
+<li><p>Anthropic content blocks may not translate cleanly to OpenAI tool
+calls.</p></li>
+<li><p>Local KV limits may be overrun by clients assuming 200K
+context.</p></li>
+<li><p>Harmony or analysis channels may be discarded
+incorrectly.</p></li>
+<li><p>Parallel tool calls may contain malformed JSON.</p></li>
+</ul>
+<h1 id="agent-harness">4. Agent Harness</h1>
+<table style="width:100%;">
+<colgroup>
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+<col style="width: 14%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>Capability</strong></th>
+<th><strong>OpenCode</strong></th>
+<th><strong>Aider</strong></th>
+<th><strong>OpenHands</strong></th>
+<th><strong>Goose</strong></th>
+<th><strong>Continue/Cline</strong></th>
+<th><strong>Custom</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Terminal-first</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Web/CLI</td>
+<td>Yes</td>
+<td>IDE-first</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Local OpenAI endpoint</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Iterative tool loop</td>
+<td>Yes</td>
+<td>Partial</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Surgical patches</td>
+<td>Yes</td>
+<td>Excellent</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Owned</td>
+</tr>
+<tr>
+<td>Permission prompts</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Sandbox policy</td>
+<td>Yes</td>
+<td>Yes</td>
+<td>Owned</td>
+</tr>
+<tr>
+<td>Repo instructions</td>
+<td>Yes/adapter</td>
+<td>Conventions file</td>
+<td>Partial</td>
+<td>Partial</td>
+<td>Rules file</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Parallel subagents</td>
+<td>Partial</td>
+<td>No</td>
+<td>Partial</td>
+<td>Extensions</td>
+<td>Partial</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>MCP</td>
+<td>Yes</td>
+<td>Limited</td>
+<td>Partial</td>
+<td>Strong</td>
+<td>Strong</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Git workflow</td>
+<td>Yes</td>
+<td>Excellent</td>
+<td>Yes</td>
+<td>Partial</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>Sandboxed shell</td>
+<td>External</td>
+<td>External</td>
+<td>Strong Docker model</td>
+<td>External</td>
+<td>External</td>
+<td>Yes</td>
+</tr>
+</tbody>
+</table>
+<h2 id="primary-recommendation-opencode">Primary recommendation:
+OpenCode</h2>
+<p>Use OpenCode as the daily-driver frontend because it is
+terminal-oriented, provider-agnostic and compatible with local
+OpenAI-style APIs. Keep Aider as a fallback for mature edit/commit
+workflows. Use OpenHands as an evaluation scaffold rather than the main
+terminal assistant.</p>
+<h2 id="project-memory">Project memory</h2>
+<p># Repository Instructions<br />
+<br />
+## Purpose<br />
+What the repository provides.<br />
+<br />
+## Architecture<br />
+Major packages, services and data flows.<br />
+<br />
+## Commands<br />
+- Install:<br />
+- Test:<br />
+- Lint:<br />
+- Type-check:<br />
+- Build:<br />
+<br />
+## Editing Rules<br />
+- Preserve public interfaces unless requested.<br />
+- Prefer surgical patches.<br />
+- Do not alter generated files.<br />
+- Never modify secrets or deployment credentials.<br />
+<br />
+## Validation<br />
+Commands that must pass before completion.<br />
+<br />
+## Restricted Paths<br />
+- production/<br />
+- secrets/<br />
+- migrations/applied/</p>
+<p>ln -s AGENTS.md CLAUDE.md</p>
+<h2 id="minimal-owned-python-harness">Minimal owned Python harness</h2>
+<p>The owned harness must include a typed tool registry, exact-match
+patching, repository path validation, structured argv command execution,
+permission decisions, project-memory loading, history compaction and a
+hard iteration limit. The full implementation should remain in separate
+modules: tools.py, policy.py and agent.py.</p>
+<p># Core loop outline<br />
+for step in range(40):<br />
+messages = await compact(messages)<br />
+response = await client.chat.completions.create(<br />
+model=&quot;local-coder&quot;,<br />
+messages=messages,<br />
+tools=openai_tool_schemas(),<br />
+tool_choice=&quot;auto&quot;,<br />
+temperature=0.2,<br />
+max_tokens=6000,<br />
+)<br />
+messages.append(response.choices[0].message.model_dump(exclude_none=True))<br />
+if not response.choices[0].message.tool_calls:<br />
+return response.choices[0].message.content<br />
+for call in response.choices[0].message.tool_calls:<br />
+decision = authorize(call.function.name,
+json.loads(call.function.arguments), mode)<br />
+# deny, request confirmation, or execute the registered tool<br />
+raise RuntimeError(&quot;Maximum agent iterations reached&quot;)</p>
+<h1 id="orchestration-and-multi-agent-layer">5. Orchestration and
+Multi-Agent Layer</h1>
+<h2 id="recommended-combination">Recommended combination</h2>
+<ul>
+<li><p>LangGraph for the stateful planner/executor/reviewer
+graph.</p></li>
+<li><p>Prefect for schedules, retries, run history and task
+triggering.</p></li>
+<li><p>Custom asyncio semaphores for inference admission
+control.</p></li>
+<li><p>Git worktrees for filesystem isolation.</p></li>
+<li><p>Docker for command isolation.</p></li>
+</ul>
+<h2 id="initial-concurrency-limits">Initial concurrency limits</h2>
+<p>Main model:<br />
+maximum active requests = 1<br />
+bounded queued requests = 8<br />
+Fast model:<br />
+maximum active requests = 2<br />
+optional third request only for short summaries<br />
+Shell/test containers:<br />
+maximum concurrent = 2<br />
+Parallel coding branches:<br />
+maximum = 2</p>
+<p>main_slots = asyncio.Semaphore(1)<br />
+fast_slots = asyncio.Semaphore(2)<br />
+test_slots = asyncio.Semaphore(2)</p>
+<h2 id="plannerexecutorreviewer-pattern">Planner/executor/reviewer
+pattern</h2>
+<p>User request<br />
+-&gt; fast planner<br />
+-&gt; structured task graph<br />
+-&gt; main executor A / executor B only if independent<br />
+-&gt; test runner<br />
+-&gt; fast reviewer<br />
+-&gt; main repair pass<br />
+-&gt; human approval<br />
+-&gt; commit</p>
+<h2 id="git-worktree-isolation">Git worktree isolation</h2>
+<p>git fetch --all --prune<br />
+git worktree add ../project-agent-a -b agent/a<br />
+git worktree add ../project-agent-b -b agent/b<br />
+<br />
+git -C ../project-agent-a status<br />
+git -C ../project-agent-b status<br />
+<br />
+git diff main...agent/a<br />
+git diff main...agent/b<br />
+<br />
+git switch main<br />
+git merge --no-ff agent/a<br />
+git merge --no-ff agent/b</p>
+<h2 id="mcp-design">MCP design</h2>
+<ul>
+<li><p>Filesystem server restricted to one worktree.</p></li>
+<li><p>Git server without push credentials.</p></li>
+<li><p>Database server using read-only credentials by default.</p></li>
+<li><p>Fetch server restricted by hostname allowlist.</p></li>
+<li><p>SQL tools with explicit query timeouts.</p></li>
+<li><p>Browser automation in a separate container.</p></li>
+</ul>
+<p>{<br />
+&quot;mcpServers&quot;: {<br />
+&quot;repo-files&quot;: {<br />
+&quot;command&quot;: &quot;npx&quot;,<br />
+&quot;args&quot;: [&quot;-y&quot;, &quot;@modelcontextprotocol/server-filesystem&quot;,
+&quot;/home/caleb/worktrees/project-agent-a&quot;]<br />
+},<br />
+&quot;git-readonly&quot;: {<br />
+&quot;command&quot;: &quot;python3&quot;,<br />
+&quot;args&quot;: [&quot;/home/caleb/mcp/git_server.py&quot;, &quot;--repo&quot;,
+&quot;/home/caleb/worktrees/project-agent-a&quot;, &quot;--read-only&quot;]<br />
+}<br />
+}<br />
+}</p>
+<h1 id="security-and-sandboxing">6. Security and Sandboxing</h1>
+<h2 id="docker-execution-sandbox">Docker execution sandbox</h2>
+<p>FROM ubuntu:24.04<br />
+RUN apt-get update &amp;&amp; DEBIAN_FRONTEND=noninteractive apt-get
+install -y bash git python3 python3-pip python3-venv nodejs npm curl
+ca-certificates ripgrep &amp;&amp; rm -rf /var/lib/apt/lists/*
+&amp;&amp; useradd --create-home --uid 10001 agent<br />
+USER agent<br />
+WORKDIR /workspace</p>
+<p>docker build -f Dockerfile.agent -t local-agent-sandbox:24.04 .<br />
+<br />
+docker run --rm --network none --cpus 6 --memory 10g --pids-limit 512
+--read-only --tmpfs /tmp:rw,noexec,nosuid,size=2g --security-opt
+no-new-privileges:true --cap-drop ALL --user 10001:10001 --mount
+type=bind,src=&quot;$PWD&quot;,dst=/workspace,rw local-agent-sandbox:24.04 bash
+-lc &#39;python3 -m pytest -q&#39;</p>
+<h2 id="permission-policy">Permission policy</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>Action</strong></th>
+<th><strong>Policy</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Read files under worktree</td>
+<td>Auto-approve</td>
+</tr>
+<tr>
+<td>git status/diff/log</td>
+<td>Auto-approve</td>
+</tr>
+<tr>
+<td>rg, glob, lint, unit tests</td>
+<td>Auto-approve</td>
+</tr>
+<tr>
+<td>Edit source in worktree</td>
+<td>Auto-approve only in explicit edit mode</td>
+</tr>
+<tr>
+<td>Create files</td>
+<td>Confirm initially; later allow by path</td>
+</tr>
+<tr>
+<td>Package installation</td>
+<td>Confirm</td>
+</tr>
+<tr>
+<td>Network fetch</td>
+<td>Confirm plus hostname allowlist</td>
+</tr>
+<tr>
+<td>Read-only database SELECT</td>
+<td>Auto-approve with row/time limits</td>
+</tr>
+<tr>
+<td>Database write</td>
+<td>Always confirm</td>
+</tr>
+<tr>
+<td>git commit</td>
+<td>Confirm or autonomous-branch mode</td>
+</tr>
+<tr>
+<td>git push / PR creation</td>
+<td>Always confirm</td>
+</tr>
+<tr>
+<td>Delete files</td>
+<td>Always confirm</td>
+</tr>
+<tr>
+<td>Access outside worktree</td>
+<td>Block</td>
+</tr>
+<tr>
+<td>Read .env, SSH keys, browser profiles</td>
+<td>Block</td>
+</tr>
+<tr>
+<td>Privileged Docker or host namespaces</td>
+<td>Block</td>
+</tr>
+<tr>
+<td>Destructive disk/system commands</td>
+<td>Block</td>
+</tr>
+</tbody>
+</table>
+<h2 id="secret-handling-and-prompt-injection">Secret handling and prompt
+injection</h2>
+<ol type="1">
+<li><p>Keep secrets outside repositories.</p></li>
+<li><p>Pass short-lived credentials through process environment
+only.</p></li>
+<li><p>Redact known secret patterns before logging.</p></li>
+<li><p>Never mount ~/.ssh, Windows profile directories or the Docker
+socket.</p></li>
+<li><p>Use separate read-only database identities for agents.</p></li>
+<li><p>Run gitleaks before commits.</p></li>
+</ol>
+<p>docker run --rm -v &quot;$PWD:/repo&quot; zricethezav/gitleaks:latest detect
+--source=/repo --no-git</p>
+<ul>
+<li><p>Tool permissions are enforced by policy code, not prompt
+text.</p></li>
+<li><p>Fetched content never becomes a system message.</p></li>
+<li><p>Tool output is length-limited and provenance-tagged.</p></li>
+<li><p>Secrets are unavailable to the tool container.</p></li>
+<li><p>Network access is off by default.</p></li>
+<li><p>Commands use structured argv arrays, not shell=True.</p></li>
+<li><p>Repository instructions cannot override hard policy.</p></li>
+<li><p>External side effects require confirmation.</p></li>
+</ul>
+<h1 id="observability-and-evaluation">7. Observability and
+Evaluation</h1>
+<h2 id="minimum-stack">Minimum stack</h2>
+<ul>
+<li><p>LiteLLM Prometheus metrics.</p></li>
+<li><p>OpenTelemetry spans from the custom harness.</p></li>
+<li><p>Optional local Langfuse for prompt and tool traces.</p></li>
+<li><p>nvidia-smi dmon for immediate GPU debugging.</p></li>
+<li><p>DCGM Exporter, Prometheus and Grafana for longer-term
+monitoring.</p></li>
+<li><p>Structured JSONL logs for every tool call.</p></li>
+</ul>
+<p>watch -n 1 nvidia-smi<br />
+nvidia-smi dmon -s pucvmet -d 1<br />
+nvidia-smi pmon -s um<br />
+curl -s http://127.0.0.1:8001/metrics<br />
+curl -s http://127.0.0.1:8002/metrics<br />
+curl -s http://127.0.0.1:4000/metrics</p>
+<h2 id="evaluation-suite">Evaluation suite</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>Task</strong></th>
+<th><strong>Purpose</strong></th>
+<th><strong>Success condition</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Bug fix</td>
+<td>Localized behavioral defect requiring tests and two source
+files</td>
+<td>Hidden test passes; no unrelated changes</td>
+</tr>
+<tr>
+<td>Multi-file refactor</td>
+<td>Move a shared interface across four to six files</td>
+<td>Tests, type checks and API snapshot pass</td>
+</tr>
+<tr>
+<td>Test generation</td>
+<td>Add edge cases including one subtle boundary</td>
+<td>Mutation testing improves, not only line coverage</td>
+</tr>
+</tbody>
+</table>
+<p>python eval/run.py --suite eval/tasks.yaml --model local-coder --runs
+5 --max-steps 40 --timeout-seconds 1800 --output
+eval/results/local-coder.jsonl</p>
+<ul>
+<li><p>pass@1 and task success rate</p></li>
+<li><p>median wall-clock time and generated tokens</p></li>
+<li><p>tool-call parse failures and invalid edits</p></li>
+<li><p>test executions and human interventions per success</p></li>
+<li><p>unrelated files changed</p></li>
+<li><p>peak VRAM and energy per successful task</p></li>
+</ul>
+<p>Use SWE-bench Verified, the Aider polyglot benchmark and
+Terminal-Bench only as reference points. Do not compare percentages
+unless scaffold, prompt, quantization, context and test environment
+match.</p>
+<h1 id="phased-build-plan">8. Phased Build Plan</h1>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>Phase</strong></th>
+<th><strong>Tasks</strong></th>
+<th><strong>Done criteria</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Week 1 - Hardware and WSL baseline</td>
+<td>Install WSL2, verify all four GPUs, inspect PCIe topology, establish
+Linux-side repository storage.</td>
+<td>All GPUs visible; link widths recorded; stable 30-minute CUDA
+load.</td>
+</tr>
+<tr>
+<td>Week 2 - llama.cpp and one-model baseline</td>
+<td>Build CUDA llama.cpp, launch Qwen on GPUs 0-1, test 32K and tool
+calls.</td>
+<td>At least 18 of 20 tool calls parse; no OOM over 30 repeated
+requests.</td>
+</tr>
+<tr>
+<td>Week 3 - Second model and gateway</td>
+<td>Launch gpt-oss on GPUs 2-3; configure LiteLLM aliases and
+metrics.</td>
+<td>Both models respond simultaneously and route correctly.</td>
+</tr>
+<tr>
+<td>Week 4 - Daily-driver CLI</td>
+<td>Install OpenCode and Aider; add AGENTS.md; test plan/read/edit
+modes.</td>
+<td>One real bug fix completed with reviewable diff and
+policy-controlled shell calls.</td>
+</tr>
+<tr>
+<td>Week 5 - Sandbox and policy</td>
+<td>Build non-root Docker sandbox; network-off execution; secret
+scanning; escape tests.</td>
+<td>Read-only root, no default network, no path escape, security tests
+pass.</td>
+</tr>
+<tr>
+<td>Week 6 - Custom harness</td>
+<td>Implement registry, patching, memory, compaction, budgets and JSONL
+logs.</td>
+<td>Plan mode writes nothing; denied tools return structured results;
+loops terminate.</td>
+</tr>
+<tr>
+<td>Week 7 - Multi-agent worktrees</td>
+<td>Add planner, executor, reviewer, tester, semaphores and
+worktrees.</td>
+<td>Two branches run safely; only one main-model request is active.</td>
+</tr>
+<tr>
+<td>Week 8 - Scheduling and MCP</td>
+<td>Install Prefect; add safe scheduled jobs and restricted MCP
+servers.</td>
+<td>Schedules never push automatically; filesystem and database
+boundaries hold.</td>
+</tr>
+<tr>
+<td>Week 9 - Observability and evaluation</td>
+<td>Add dashboards; run private suite; compare engines and models.</td>
+<td>One measured, pinned production configuration is selected.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="verification-command-set">Verification command set</h2>
+<p># Hardware<br />
+nvidia-smi<br />
+nvidia-smi topo -m<br />
+free -h<br />
+df -h<br />
+<br />
+# Model service<br />
+curl -s http://127.0.0.1:8001/v1/models | jq<br />
+curl -s http://127.0.0.1:8002/v1/models | jq<br />
+<br />
+# Gateway<br />
+curl -s http://127.0.0.1:4000/v1/models -H &quot;Authorization: Bearer
+$LITELLM_MASTER_KEY&quot; | jq<br />
+<br />
+# Repository quality<br />
+git status --short<br />
+git diff --check<br />
+pytest -q<br />
+<br />
+# Security<br />
+python -m pytest tests/security -q<br />
+<br />
+# Orchestration<br />
+python -m pytest tests/orchestration -q<br />
+git worktree list<br />
+<br />
+# Observability<br />
+curl -fsS http://127.0.0.1:9090/-/healthy<br />
+curl -fsS http://127.0.0.1:3000/api/health</p>
+<h1 id="limitations-and-honest-gaps">9. Limitations and Honest Gaps</h1>
+<h2 id="capability-parity">Capability parity</h2>
+<table>
+<colgroup>
+<col style="width: 50%" />
+<col style="width: 50%" />
+</colgroup>
+<thead>
+<tr>
+<th><strong>Capability</strong></th>
+<th><strong>Local parity</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Plan, act and observe loop</td>
+<td>Achievable</td>
+</tr>
+<tr>
+<td>File tools, grep and shell</td>
+<td>Achievable</td>
+</tr>
+<tr>
+<td>Permission prompts</td>
+<td>Achievable</td>
+</tr>
+<tr>
+<td>Docker shell sandbox</td>
+<td>Achievable; potentially stronger</td>
+</tr>
+<tr>
+<td>Repository memory files</td>
+<td>Achievable</td>
+</tr>
+<tr>
+<td>Automatic compaction</td>
+<td>Achievable, but summary quality is lower</td>
+</tr>
+<tr>
+<td>Parallel subagents</td>
+<td>Achievable with explicit scheduling</td>
+</tr>
+<tr>
+<td>MCP, hooks and custom commands</td>
+<td>Achievable</td>
+</tr>
+<tr>
+<td>Git and VS Code integration</td>
+<td>Achievable</td>
+</tr>
+<tr>
+<td>Frontier-model reasoning</td>
+<td>Not equivalent</td>
+</tr>
+<tr>
+<td>Very long autonomous reliability</td>
+<td>Not equivalent</td>
+</tr>
+<tr>
+<td>Anthropic prompt-cache semantics</td>
+<td>Not realistic through a generic local API</td>
+</tr>
+<tr>
+<td>Exact Claude Code behavior</td>
+<td>Not realistic</td>
+</tr>
+</tbody>
+</table>
+<h2 id="model-gaps-and-mitigations">Model gaps and mitigations</h2>
+<ul>
+<li><p>Weaker abstraction discovery across very large
+repositories.</p></li>
+<li><p>Lower reliability over 30-50 tool interactions.</p></li>
+<li><p>More difficulty recovering from misleading tests.</p></li>
+<li><p>Less consistent recognition of conflicting requirements.</p></li>
+<li><p>Tool-call validity degrades under context pressure.</p></li>
+<li><p>Self-review may reinforce an incorrect architecture.</p></li>
+</ul>
+<ol start="7" type="1">
+<li><p>Limit each executor to one narrow objective.</p></li>
+<li><p>Require tests after each meaningful edit group.</p></li>
+<li><p>Give reviewers task, diff, relevant files and test output rather
+than the raw transcript.</p></li>
+<li><p>Use deterministic patch tools instead of whole-file
+rewrites.</p></li>
+<li><p>Re-plan after two consecutive failed test passes.</p></li>
+<li><p>Cap autonomous steps.</p></li>
+<li><p>Keep humans in the loop for dependencies, schemas, deployments
+and Git pushes.</p></li>
+<li><p>Retrieve relevant files instead of stuffing the entire repository
+into context.</p></li>
+</ol>
+<h2 id="hardware-bottlenecks-and-upgrades">Hardware bottlenecks and
+upgrades</h2>
+<ul>
+<li><p>PCIe topology is the largest unknown. If a slot is x1, use that
+card for an independent small model rather than cross-GPU
+splitting.</p></li>
+<li><p>Four 12 GB cards do not behave like one 48 GB card. Per-process
+allocations must balance and fragmentation can still cause OOM.</p></li>
+<li><p>The i5-14400F is adequate for coordination and light builds, but
+can bottleneck concurrent test suites and CPU-offloaded models.</p></li>
+<li><p>Upgrade system RAM to 64 GB minimum; 96 or 128 GB is preferred if
+supported reliably.</p></li>
+<li><p>If model quality remains limiting, replace two 4070s with one 24
+GB or 32 GB GPU rather than adding a fifth small card.</p></li>
+</ul>
+<h2 id="power-heat-and-noise">Power, heat and noise</h2>
+<p>Four RTX 4070-class cards can approach roughly 800 W of board power
+before CPU and system losses. Begin with conservative per-card limits
+and validate thermals before unattended schedules.</p>
+<p>sudo nvidia-smi -pl 160<br />
+nvidia-smi
+--query-gpu=index,power.min_limit,power.max_limit,power.default_limit
+--format=csv<br />
+nvidia-smi
+--query-gpu=index,temperature.gpu,power.draw,power.limit,utilization.gpu,clocks.sm
+--format=csv -l 2</p>
+<ul>
+<li><p>Use a high-quality PSU sized for simultaneous transient
+load.</p></li>
+<li><p>Use direct PSU cables rather than overloaded splitters.</p></li>
+<li><p>Provide strong front-to-back airflow and spacing between
+cards.</p></li>
+<li><p>Add temperature-triggered shutdown behavior.</p></li>
+<li><p>Validate sustained operation before enabling unattended scheduled
+work.</p></li>
+</ul>
+<h1 id="start-here-first-10-actions">Start Here: First 10 Actions</h1>
+<ol start="15" type="1">
+<li><p>Check the motherboard manual for slot wiring and whether four
+GPUs force any slot to x1.</p></li>
+<li><p>Install Ubuntu 24.04 under WSL2 and update WSL.</p></li>
+<li><p>Verify all four GPUs using wsl -- nvidia-smi.</p></li>
+<li><p>Run nvidia-smi topo -m and record PCIe widths under
+load.</p></li>
+<li><p>Upgrade system RAM to at least 64 GB if the motherboard supports
+it.</p></li>
+<li><p>Store repositories under /home/caleb/src, not /mnt/c.</p></li>
+<li><p>Build a pinned CUDA-enabled llama.cpp.</p></li>
+<li><p>Download and launch Qwen3-Coder-30B-A3B Q4 on GPUs 0 and 1 at 32K
+context first.</p></li>
+<li><p>Run a 20-prompt tool-call test and a real repository bug-fix
+evaluation before increasing context.</p></li>
+<li><p>Launch the fast model on GPUs 2 and 3, place LiteLLM in front of
+both, then connect OpenCode after both endpoints pass API contract
+tests.</p></li>
+</ol>
+<h1 id="references-checked">References Checked</h1>
+<ul>
+<li><p>NVIDIA CUDA on WSL User Guide, Release 13.4 / September
+2026.</p></li>
+<li><p>vLLM documentation: tool calling and
+parallelism/scaling.</p></li>
+<li><p>SGLang documentation: tool parsers and quantization.</p></li>
+<li><p>LiteLLM documentation: proxy configuration and Anthropic
+pass-through.</p></li>
+<li><p>Qwen model card: Qwen3-Coder-30B-A3B-Instruct.</p></li>
+<li><p>OpenAI model card: gpt-oss-20b.</p></li>
+<li><p>Mistral model card and documentation: Devstral Small 2 24B
+Instruct 2512.</p></li>
+<li><p>Unsloth Qwen3-Coder local deployment guidance.</p></li>
+</ul>
+</body>
+</html>
